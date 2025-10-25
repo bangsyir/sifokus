@@ -7,14 +7,13 @@ import {
 } from "react-router";
 import { db } from "~/db/drizzle";
 import { tasks, pomodoroSessions } from "~/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import TaskTimer from "~/components/TaskTimer";
-import { useTimerStore } from "~/store/timerStore";
 import { useEffect } from "react";
 
 // ---------- LOADER ----------
 export async function loader({}: LoaderFunctionArgs) {
-  const allTasks = await db.select().from(tasks).orderBy(tasks.id);
+  const allTasks = await db.select().from(tasks).orderBy(desc(tasks.id));
   const allSessions = await db.select().from(pomodoroSessions);
   return data({ tasks: allTasks, sessions: allSessions });
 }
@@ -102,12 +101,13 @@ export default function Index() {
             key={task.id}
             className="flex items-center justify-between border rounded p-3 shadow-sm bg-white"
           >
-            <div>
-              <p
-                className={`font-semibold ${task.status === "done" ? "line-through text-gray-400" : ""}`}
-              >
-                {task.title}
-              </p>
+            <p
+              className={`font-semibold ${task.status === "done" ? "line-through text-gray-400" : ""}`}
+            >
+              {task.title}
+            </p>
+            <div className="flex items-center gap-2">
+              {task.status !== "done" && <UpdateSession taskId={task.id} />}
               {task.status === "pending" && (
                 <TaskTimer
                   taskId={task.id}
@@ -115,7 +115,6 @@ export default function Index() {
                 />
               )}
             </div>
-
             {task.status === "done" && (
               <span className="text-green-600">✅ Done</span>
             )}
@@ -129,5 +128,22 @@ export default function Index() {
         <p>Total: {sessions.length}</p>
       </div>
     </div>
+  );
+}
+
+function UpdateSession({ taskId }: { taskId: number }) {
+  const fetcher = useFetcher();
+  return (
+    <fetcher.Form method="post" className="flex gap-2">
+      <input type="hidden" name="taskId" value={taskId} />
+      <button
+        type="submit"
+        name="intent"
+        value="complete-task"
+        className="px-2 py-1 rounded border"
+      >
+        Done
+      </button>
+    </fetcher.Form>
   );
 }
