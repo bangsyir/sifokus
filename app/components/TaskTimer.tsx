@@ -1,7 +1,9 @@
-// app/components/TaskTimer.tsx
 import { useEffect, useRef, useState } from "react";
 import { useTimerStore } from "~/store/timerStore";
 import { formatTime } from "~/utils/formatTime";
+import { Play, Square, TimerReset } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { Skeleton } from "./ui/skeleton";
 
 export default function TaskTimer({
   taskId,
@@ -29,6 +31,7 @@ export default function TaskTimer({
   const [displayRemaining, setDisplayRemaining] = useState<number>(() => {
     return getRemaining(taskId);
   });
+  const [hydrated, setHydrated] = useState(false);
 
   const rafRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
@@ -39,6 +42,7 @@ export default function TaskTimer({
     activeTaskId !== taskId;
 
   useEffect(() => {
+    setHydrated(true);
     // Always keep displayRemaining in sync when store changes (start/pause/reset)
     setDisplayRemaining(getRemaining(taskId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,6 +53,7 @@ export default function TaskTimer({
   ]);
 
   useEffect(() => {
+    if (!hydrated) return;
     // If not running, nothing to schedule
     if (!t.isRunning || !t.startedAt) {
       // ensure any scheduled timers are cleared
@@ -63,11 +68,7 @@ export default function TaskTimer({
       return;
     }
 
-    let mounted = true;
-
     const tick = () => {
-      if (!mounted) return;
-
       // compute accurate remaining using wall clock
       const elapsed = Math.floor(
         (Date.now() - (t.startedAt ?? Date.now())) / 1000,
@@ -80,7 +81,7 @@ export default function TaskTimer({
 
         // 🔔 optional: play audio + send browser notification
         try {
-          new Audio("/notify.mp3").play();
+          new Audio("/notify.wav").play();
           if (Notification.permission === "granted") {
             new Notification("Pomodoro complete! Take a break ☕");
           }
@@ -106,7 +107,6 @@ export default function TaskTimer({
     tick();
 
     return () => {
-      mounted = false;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -118,37 +118,63 @@ export default function TaskTimer({
     };
     // we only want to re-run when the running state or startedAt changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t.isRunning, t.startedAt]);
+  }, [hydrated, t.isRunning, t.startedAt]);
+
+  if (!hydrated) {
+    // Render a placeholder to match server-side markup (no mismatch)
+    return (
+      <div className="flex items-center gap-2">
+        <Skeleton className="bg-background h-4 w-10 mr-4" />
+        <Skeleton className="w-4 h-4 bg-background" />
+        <Skeleton className="w-4 h-4 bg-background" />
+      </div>
+    );
+  }
+
+  function setStartTime(taskId: number, duration: number) {
+    new Audio("/notify.wav").play();
+    startTimer(taskId, duration);
+  }
+
+  function setPauseTimer(taskId: number) {
+    new Audio("/notify-2.wav").play();
+    pauseTimer(taskId);
+  }
 
   return (
     <div className="flex items-center gap-2">
-      <div className="w-20 text-center font-mono">
-        {formatTime(displayRemaining)}
-      </div>
-
       {t.isRunning ? (
         <button
-          onClick={() => pauseTimer(taskId)}
-          className="px-2 py-1 rounded bg-yellow-500 text-white"
+          onClick={() => setPauseTimer(taskId)}
+          className={cn(
+            "bg-yellow-500 rounded-full p-1 text-white hover:bg-yellow-600 hover:text-white cursor-pointer",
+          )}
         >
-          Pause
+          <Square className="h-4 w-4" />
         </button>
       ) : (
         <button
-          onClick={() => startTimer(taskId, t.duration)}
+          onClick={() => setStartTime(taskId, t.duration)}
           disabled={isAnotherRunning}
-          className={`px-2 py-1 rounded text-white ${isAnotherRunning ? "bg-gray-300 cursor-not-allowed" : "bg-green-600"}`}
+          className={cn(
+            `text-white hover:bg-green-700 rounded-full p-1 cursor-pointer dark:hover:bg-green-700 hover:text-white ${isAnotherRunning ? "bg-gray-300 cursor-not-allowed" : "bg-green-600 dark:bg-green-600"}`,
+          )}
         >
-          Start
+          <Play className="w-4 h-4" />
         </button>
       )}
 
       <button
         onClick={() => resetTimer(taskId)}
-        className="px-2 py-1 rounded bg-gray-600 text-white"
+        className={cn(
+          "cursor-pointer bg-primary p-1 rounded-full hover:bg-primary/90",
+        )}
       >
-        Reset
+        <TimerReset className="h-4 w-4" />
       </button>
+      <div className="w-20 text-center font-mono">
+        {formatTime(displayRemaining)}
+      </div>
     </div>
   );
 }
