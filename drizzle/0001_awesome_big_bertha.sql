@@ -1,0 +1,1 @@
+ALTER TABLE "task_sessions" ALTER COLUMN "start_time" DROP NOT NULL;
