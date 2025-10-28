@@ -1,4 +1,5 @@
 // app/db/schema.ts
+import { Provider } from "@radix-ui/react-tooltip";
 import { relations } from "drizzle-orm";
 import {
   pgTable,
@@ -8,6 +9,7 @@ import {
   uuid,
   boolean,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 import { v7 as uuidv7 } from "uuid";
@@ -19,14 +21,15 @@ export const users = pgTable(
       .primaryKey()
       .$defaultFn(() => uuidv7()),
     fullname: text("full_name"),
-    username: text("username"),
-    email: text("email"),
+    username: text("username").unique(),
+    email: text("email").unique(),
     emailVerified: timestamp("email_verified", {
       withTimezone: true,
       mode: "date",
       precision: 3,
     }),
     image: text("image"),
+    role: text("role").default("user"),
     createdAt: timestamp("created_at", {
       withTimezone: true,
       mode: "date",
@@ -37,14 +40,44 @@ export const users = pgTable(
   },
   (table) => [
     index("user_id_idx").on(table.id),
-    index("user_username_idx").on(table.username),
-    index("user_email_idx").on(table.email),
+    uniqueIndex("user_username_idx").on(table.username),
+    uniqueIndex("user_email_idx").on(table.email),
   ],
 );
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   sessions: many(sessions),
   tasks: many(tasks),
+  provider: one(userProviders),
+}));
+
+export const userProviders = pgTable(
+  "user_providers",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerId: text("provider_id").notNull(),
+    email: text("email"),
+    name: text("name"),
+    avatarUrl: text("avatar_url"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_provider_id").on(table.provider, table.providerId),
+    index("user_providers_user_id_idx").on(table.userId),
+  ],
+);
+
+export const userProvidersRelations = relations(userProviders, ({ one }) => ({
+  user: one(users, {
+    fields: [userProviders.userId],
+    references: [users.id],
+  }),
 }));
 
 export const sessions = pgTable(
@@ -132,10 +165,13 @@ export const taskSessions = pgTable(
     taskId: uuid("task_id")
       .notNull()
       .references(() => tasks.id, { onDelete: "cascade" }),
-    startTime: timestamp("start_time").notNull(),
-    endTime: timestamp("end_time"), // Null if the session hasn't finished
-    durationMinutes: integer("duration_minutes").default(25).notNull(), // Can be adjusted, default 25
+    duration: integer("duration").notNull(), // Can be adjusted, default seconds 25 * 60
     isCompleted: boolean("is_completed").default(false).notNull(), // True if the full 25 min ran OR task was completed
+    startAt: timestamp("start_time", {
+      withTimezone: true,
+      mode: "date",
+      precision: 3,
+    }),
     completedAt: timestamp("completed_at", {
       withTimezone: true,
       mode: "date",
@@ -155,7 +191,7 @@ export const taskSessions = pgTable(
     index("session_task_id_idx").on(sessions.taskId),
 
     // 2. Index for finding the latest session quickly
-    index("session_start_time_idx").on(sessions.startTime),
+    index("session_start_at_idx").on(sessions.startAt),
 
     // 3. Index for status/analytics
     index("session_is_completed_idx").on(sessions.isCompleted),
