@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 type Timer = {
-  taskId: number;
+  taskId: string;
   timeLeft: number; // seconds remaining when paused or initial duration
   duration: number; // configured duration in seconds (default 25*60)
   isRunning: boolean;
@@ -11,13 +11,13 @@ type Timer = {
 };
 
 type TimerState = {
-  timers: Record<number, Timer>;
-  activeTaskId?: number | null;
-  startTimer: (taskId: number, duration?: number) => void;
-  pauseTimer: (taskId: number) => void;
-  resetTimer: (taskId: number) => void;
+  timers: Record<string, Timer>;
+  activeTaskId?: string | null;
+  startTimer: (taskId: string, duration?: number) => void;
+  pauseTimer: (taskId: string) => void;
+  resetTimer: (taskId: string) => void;
   // optional: getRemaining helper (not persisted)
-  getRemaining: (taskId: number) => number;
+  getRemaining: (taskId: string) => number;
 };
 
 const DEFAULT_DURATION = 25 * 60;
