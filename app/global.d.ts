@@ -1,13 +1,14 @@
 export {};
 
 declare global {
-  type ApiResponse<T = undefined, E = undefined> = {
+  type ApiResponse<TDetails = any, TData = any> = {
     success: boolean;
     code: string;
     message: string;
-    details?: E;
-    data?: T;
+    details?: TDetails;
+    data?: TData;
   };
+
   interface DrizzleErrorCause extends Error {
     code: string;
     details?: string;
