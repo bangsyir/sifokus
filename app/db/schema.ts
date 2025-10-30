@@ -239,7 +239,7 @@ export const taskSessions = pgTable(
     type: sessionTypeEnum("type").notNull(),
     status: sessionStatusEnum("status").default("running").notNull(),
     duration: integer("duration").notNull(), // Can be adjusted, default seconds 25 * 60
-    startAt: timestamp("start_time", {
+    startedAt: timestamp("start_time", {
       withTimezone: true,
       mode: "date",
       precision: 3,
@@ -255,7 +255,7 @@ export const taskSessions = pgTable(
     index("session_task_id_idx").on(sessions.taskId),
     index("session_is_completed_idx").on(sessions.completed),
     index("task_sessions_type_idx").on(sessions.type),
-    index("session_start_at_idx").on(sessions.startAt),
+    index("session_start_at_idx").on(sessions.startedAt),
     index("task_sessions_ended_at_idx").on(sessions.endedAt),
     index("task_sessions_user_completed_endedat_idx").on(
       sessions.userId,
