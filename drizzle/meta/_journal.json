@@ -15,6 +15,13 @@
       "when": 1761651839912,
       "tag": "0001_awesome_big_bertha",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761828946024,
+      "tag": "0002_young_mad_thinker",
+      "breakpoints": true
     }
   ]
 }
