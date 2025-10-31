@@ -61,7 +61,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     "~/utils/sessions.server"
   );
 
-  console.log({ login });
   const session = await getSession(request.headers.get("Cookie"));
   const { token, expiresAt } = await findOrCreatedDbSession(login?.data?.id!);
   session.set("token", token);
