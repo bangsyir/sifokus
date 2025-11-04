@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { useFetcher } from "react-router";
+import { toast } from "sonner";
 
 export const AddTaskForm = () => {
   const fetcher = useFetcher();
@@ -19,13 +20,14 @@ export const AddTaskForm = () => {
   React.useEffect(() => {
     if (fetcher.data?.code === "CREATED") {
       setOpen(false);
+      toast.success("");
     }
   }, [fetcher.data?.code]);
 
   return (
-    <div className="space-y-4">
+    <div className="">
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <CheckCircle2 className="h-5 w-5" />
           <h2 className="text-lg font-semibold">Tasks</h2>
         </div>
