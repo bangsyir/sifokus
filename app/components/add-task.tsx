@@ -20,7 +20,7 @@ export const AddTaskForm = () => {
   React.useEffect(() => {
     if (fetcher.data?.code === "CREATED") {
       setOpen(false);
-      toast.success("");
+      toast.success(fetcher?.data?.message);
     }
   }, [fetcher.data?.code]);
 
@@ -34,11 +34,14 @@ export const AddTaskForm = () => {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="icon" className="flex-shrink-0">
+            <Button size="icon">
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent
+            aria-describedby="create task"
+            aria-description="create task"
+          >
             <DialogHeader>
               <DialogTitle>Add New Task</DialogTitle>
             </DialogHeader>

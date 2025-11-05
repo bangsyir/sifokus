@@ -11,9 +11,11 @@ import {
 
 export default function TaskAction({
   taskId,
+  taskSessionId,
   status,
 }: {
-  taskId: number;
+  taskId: string;
+  taskSessionId: string;
   status: string | null;
 }) {
   const fetcher = useFetcher();
@@ -26,11 +28,17 @@ export default function TaskAction({
   }, [fetcher?.data]);
 
   function handleDone() {
-    fetcher.submit({ taskId, intent: "complete-task" }, { method: "post" });
+    fetcher.submit(
+      { taskId, taskSessionId, intent: "complete-task" },
+      { method: "post" },
+    );
   }
 
   function handleDelete() {
-    fetcher.submit({ taskId, intent: "delete-task" }, { method: "post" });
+    fetcher.submit(
+      { taskId, taskSessionId, intent: "delete-task" },
+      { method: "post" },
+    );
   }
   return (
     <DropdownMenu>
