@@ -27,7 +27,7 @@ export function Logout({
       });
       destroyAuthUser();
       revalidator.revalidate();
-      navigate("/signin");
+      navigate("/login");
     }
   }, [fetcher.data]);
   return (
