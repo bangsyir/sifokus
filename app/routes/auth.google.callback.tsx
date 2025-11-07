@@ -52,10 +52,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     avatarUrl: claims.picture,
   });
   if (!login.success) {
-    return data(
-      errorResponse({ message: login.error.message, code: login.error.code }),
-      { status: login.error.status },
-    );
+    return data(errorResponse({ message: login.error.message }), {
+      status: login.error.status,
+    });
   }
   const { commitSession, findOrCreatedDbSession, getSession } = await import(
     "~/utils/sessions.server"
@@ -65,7 +64,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { token, expiresAt } = await findOrCreatedDbSession(login?.data?.id!);
   session.set("token", token);
   session.set("role", login.data?.role!);
-  const message = `Welcome back ${login?.data?.name || null}, please let's explore the nature.`;
+  const message = `Welcome back ${login?.data?.name || null}, let's start focus.`;
   const base64Image = await imageLinkToBase64(claims.picture);
   const dataValue = {
     username: username,
@@ -73,7 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     avatarUrl: base64Image,
   };
 
-  return data(successResponse({ message, data: dataValue, code: "OK" }), {
+  return data(successResponse({ message, data: dataValue }), {
     status: 200,
     headers: {
       "Set-Cookie": await commitSession(session, {

@@ -1,7 +1,7 @@
 // app/routes/dashboard.tsx
 import { data, useLoaderData } from "react-router";
 import { db } from "~/db/drizzle";
-import { pomodoroSessions } from "~/db/schema";
+import { taskSessions } from "~/db/schema";
 import {
   BarChart,
   Bar,
@@ -14,8 +14,8 @@ import {
 export async function loader() {
   const rows = await db
     .select()
-    .from(pomodoroSessions)
-    .orderBy(pomodoroSessions.completedAt);
+    .from(taskSessions)
+    .orderBy(taskSessions.completedAt);
   // aggregate by date (YYYY-MM-DD)
   const grouped: Record<string, number> = {};
   for (const r of rows) {
@@ -33,8 +33,8 @@ export default function Dashboard() {
   const { chartData } = useLoaderData<typeof loader>();
 
   return (
-    <main className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Focus Dashboard</h1>
+    <main className="mx-auto max-w-3xl p-6">
+      <h1 className="mb-4 text-2xl font-bold">Focus Dashboard</h1>
       <div style={{ width: "100%", height: 300 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>

@@ -10,9 +10,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { isSignIn } = await import("~/utils/sessions.server");
   const signin = await isSignIn(request);
   if (!signin.isSignIn) {
-    return data(
-      successResponse({ code: "OK", message: "Success", data: null }),
-    );
+    return data(successResponse({ message: "Success", data: null }));
   }
   let avatar = "";
   if (signin.avatarUrl !== null && signin.avatarUrl !== undefined) {
@@ -21,7 +19,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   return data(
     successResponse({
       message: "Success",
-      code: "OK",
       data: { auth: { ...signin, avatarUrl: avatar } },
     }),
   );
@@ -41,8 +38,8 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
   }, [loaderData.success, loaderData.data]);
 
   return (
-    <div className="pb-20 md:pb-0">
-      <div className="relative container mx-auto px-4 pb-4">
+    <div className="pb-4 md:pb-0">
+      <div className="h-sreen relative container mx-auto flex flex-col px-4 pb-4">
         <Navbar isLogin={loaderData.data?.auth.isSignIn} />
         <Outlet />
       </div>

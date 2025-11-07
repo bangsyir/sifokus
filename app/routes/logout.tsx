@@ -18,7 +18,6 @@ export async function action({ request }: Route.ActionArgs) {
     return data(
       errorResponse({
         message: "Token request not found",
-        code: "UNAUTHORIZED",
       }),
       { status: 401 },
     );
@@ -27,7 +26,6 @@ export async function action({ request }: Route.ActionArgs) {
   return data(
     successResponse({
       message: "See you soon, please come back later",
-      code: "OK",
     }),
     {
       headers: {
