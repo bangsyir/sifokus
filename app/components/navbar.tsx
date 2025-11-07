@@ -1,9 +1,4 @@
-import {
-  ChevronsDown,
-  GalleryVerticalEnd,
-  LogOut,
-  Settings,
-} from "lucide-react";
+import { ChevronsDown, Loader, LogOut, Settings } from "lucide-react";
 import { Link } from "react-router";
 import { ModeToggle } from "./theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -28,7 +23,7 @@ export function Navbar({ isLogin }: { isLogin: boolean | undefined }) {
           className="flex items-center gap-2 self-center font-medium"
         >
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <GalleryVerticalEnd className="size-4" />
+            <Loader className="size-4" />
           </div>
           sifokus.
         </Link>
@@ -76,7 +71,7 @@ function SignedInUserDropDown() {
         <DropdownMenuItem asChild>
           <Logout className={cn("ml-0 flex w-full items-center gap-2")}>
             <LogOut />
-            Sign out
+            Logout
           </Logout>
         </DropdownMenuItem>
       </DropdownMenuContent>
