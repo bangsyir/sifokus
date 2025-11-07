@@ -31,7 +31,7 @@ export function LoginForm({
                 <>
                   <Button
                     variant="outline"
-                    className="w-full"
+                    className="w-full bg-background"
                     name="intent"
                     value="signInWithGoogle"
                     disabled={fetcher.state === "submitting"}
@@ -56,7 +56,7 @@ export function LoginForm({
           </div>
         </CardContent>
       </Card>
-      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+      <div className="text-center text-xs text-balance text-muted-foreground *:[a]:underline *:[a]:underline-offset-4 *:[a]:hover:text-primary">
         By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
         and <a href="#">Privacy Policy</a>.
       </div>
