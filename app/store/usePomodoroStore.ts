@@ -1,23 +1,31 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { tasks } from "~/db/schema";
 
 export type SessionType = "focus" | "short_break" | "long_break";
 export type SessionStatus = "idle" | "running" | "paused" | "completed";
 
-interface PomodoroStore {
-  activeTaskId: string | null;
+interface Tasktask {
+  id: string;
+  title: string;
   remainingTime: number;
   sessionType: SessionType;
   sessionStatus: SessionStatus;
-  cyclesCount: number;
+  cycleCount: number;
+}
 
-  selectTask: (id: string, cyclesCount: number) => void;
+interface PomodoroStore {
+  activeTaskId: string | null;
+  tasks: Record<string, Tasktask>;
+  intervalId: number | null;
+
+  selectTask: (id: string, title: string, cyclesCount: number) => void;
   startTask: () => void;
-  pauseTask: (id: string) => void;
+  pauseTask: () => void;
   resumeTask: () => void;
   // completeSession: () => void;
   nextSession: () => void;
-  resetTask: (id: string) => void;
+  resetTask: () => void;
   setSessionType: (type: SessionType) => void;
   tick: () => void;
   clearTimer: () => void;
@@ -32,66 +40,137 @@ export const usePomodoroStore = create<PomodoroStore>()(
   persist(
     (set, get) => ({
       activeTaskId: null,
-      remainingTime: DEFAULT_FOCUS,
-      sessionType: "focus",
-      sessionStatus: "idle",
-      cyclesCount: 0,
-
-      selectTask: (id, cyclesCount) => {
+      tasks: {},
+      intervalId: null,
+      selectTask: (id, title, cyclesCount) => {
+        const state = get();
+        const existing = state.tasks[id];
+        if (existing) {
+          set({
+            activeTaskId: id,
+            tasks: {
+              ...state.tasks,
+              [id]: {
+                ...existing,
+                cycleCount: cyclesCount,
+              },
+            },
+          });
+          return;
+        }
         set({
           activeTaskId: id,
-          remainingTime: DEFAULT_FOCUS,
-          sessionType: "focus",
-          sessionStatus: "idle",
-          cyclesCount: cyclesCount,
+          tasks: {
+            ...state.tasks,
+            [id]: {
+              id: id,
+              title: title,
+              remainingTime: DEFAULT_FOCUS,
+              sessionType: "focus",
+              sessionStatus: "idle",
+              cycleCount: cyclesCount,
+            },
+          },
         });
       },
 
       startTask: () => {
-        const { sessionType, cyclesCount } = get();
-        if (cyclesCount >= 4 && sessionType === "focus") {
+        const { activeTaskId, tasks } = get();
+        if (!activeTaskId) return;
+        const task = tasks[activeTaskId];
+
+        const timer = window.setInterval(() => get().tick(), 1000);
+        if (task.cycleCount >= 4 && task.sessionType === "focus") {
           set({
-            sessionStatus: "running",
-            cyclesCount: 0,
+            intervalId: timer,
+            tasks: {
+              [activeTaskId]: {
+                ...task,
+                sessionStatus: "running",
+                cycleCount: 0,
+              },
+            },
           });
         }
         set({
-          sessionStatus: "running",
+          intervalId: timer,
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              sessionStatus: "running",
+            },
+          },
         });
       },
 
       pauseTask: () => {
+        const { intervalId, activeTaskId, tasks } = get();
+        if (!activeTaskId) return;
+        if (intervalId) clearInterval(intervalId);
+        const task = tasks[activeTaskId];
         set({
-          sessionStatus: "paused",
+          intervalId: null,
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              sessionStatus: "paused",
+            },
+          },
         });
       },
 
       resumeTask: () => {
+        const { activeTaskId, tasks, intervalId } = get();
+        if (!activeTaskId || intervalId) return;
+        const timer = window.setInterval(() => get().tick(), 1000);
+        const task = tasks[activeTaskId];
         set({
-          sessionStatus: "running",
-          // intervalId: timer,
+          intervalId: timer,
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              sessionStatus: "running",
+            },
+          },
+          // intervalId: task,
         });
       },
 
       tick: () => {
-        const { activeTaskId, remainingTime } = get();
-        if (!activeTaskId) return set({});
+        const { activeTaskId, tasks } = get();
+        if (!activeTaskId) return;
+        const task = tasks[activeTaskId];
 
-        if (remainingTime <= 1) {
+        if (task.remainingTime <= 1) {
           get().nextSession();
           new Audio("ta-da.mp3").play();
           return;
         }
-        set({ remainingTime: remainingTime - 1 });
+        set({
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              remainingTime: task.remainingTime - 1,
+            },
+          },
+        });
       },
 
       nextSession: () => {
-        const { cyclesCount, sessionType } = get();
+        const { activeTaskId, tasks, intervalId } = get();
+        if (!activeTaskId) return;
+        if (intervalId) clearInterval(intervalId);
+
+        const task = tasks[activeTaskId];
         let nextType: SessionType = "focus";
         let nextTime = DEFAULT_FOCUS;
-        let nextCycles = cyclesCount;
+        let nextCycles = task.cycleCount;
 
-        if (sessionType === "focus") {
+        if (task.sessionType === "focus") {
           nextCycles += 1;
           if (nextCycles >= 4) {
             nextType = "long_break";
@@ -105,39 +184,72 @@ export const usePomodoroStore = create<PomodoroStore>()(
           nextTime = DEFAULT_FOCUS;
         }
         set({
-          sessionType: nextType,
-          remainingTime: nextTime,
-          sessionStatus: "idle",
-          cyclesCount: nextCycles,
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              sessionType: nextType,
+              remainingTime: nextTime,
+              sessionStatus: "idle",
+              cycleCount: nextCycles,
+            },
+          },
         });
       },
 
       resetTask: () => {
+        const { activeTaskId, tasks } = get();
+        if (!activeTaskId) return;
+        const task = tasks[activeTaskId];
+
         set({
-          sessionType: "focus",
-          remainingTime: DEFAULT_FOCUS,
-          sessionStatus: "idle",
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              sessionType: "focus",
+              remainingTime: DEFAULT_FOCUS,
+              sessionStatus: "idle",
+            },
+          },
         });
       },
       setSessionType: (type) => {
         let newTime = DEFAULT_FOCUS;
         if (type === "short_break") newTime = DEFAULT_SHORT_BREAK;
         if (type === "long_break") newTime = DEFAULT_LONG_BREAK;
+        const { activeTaskId, tasks } = get();
+        if (!activeTaskId) return;
+        const task = tasks[activeTaskId];
 
         set({
-          sessionType: type,
-          remainingTime: newTime,
-          sessionStatus: "idle",
+          tasks: {
+            ...tasks,
+            [activeTaskId]: {
+              ...task,
+              sessionType: type,
+              remainingTime: newTime,
+              sessionStatus: "idle",
+            },
+          },
         });
       },
 
       clearTimer: () => {
-        set({});
+        const { intervalId } = get();
+        if (intervalId) clearInterval(intervalId);
+        set({
+          intervalId: null,
+        });
       },
 
       resetAll: () => {
+        const { intervalId } = get();
+        if (intervalId) clearInterval(intervalId);
         set({
           activeTaskId: null,
+          tasks: {},
+          intervalId: null,
         });
       },
     }),
@@ -145,11 +257,28 @@ export const usePomodoroStore = create<PomodoroStore>()(
       name: "pomodoro-multi-task",
       partialize: (s) => ({
         activeTaskId: s.activeTaskId,
-        remainingTime: s.remainingTime,
-        sessionType: s.sessionType,
-        sessionStatus: s.sessionStatus,
-        cyclesCount: s.cyclesCount,
+        tasks: s.tasks,
+        intervalId: s.intervalId,
       }),
+      onRehydrateStorage: () => (state, error) => {
+        if (error) console.error("Pomodoro rehydrate failed", error);
+        if (!state) return;
+
+        // Wait until rehydrated, then resume if needed
+        setTimeout(() => {
+          const current = usePomodoroStore.getState();
+          const activeId = current.activeTaskId;
+          if (!activeId) return;
+
+          const activeTask = current.tasks[activeId];
+          if (activeTask?.sessionStatus === "running") {
+            const timer = window.setInterval(() => {
+              usePomodoroStore.getState().tick();
+            }, 1000);
+            current.intervalId = timer;
+          }
+        }, 0);
+      },
     },
   ),
 );
