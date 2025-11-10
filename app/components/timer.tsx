@@ -3,58 +3,31 @@ import { Button } from "./ui/button";
 import { Coffee, Pause, Play, RotateCcw, Settings, Timer } from "lucide-react";
 import React from "react";
 import { Skeleton } from "./ui/skeleton";
+import { useFetcher } from "react-router";
 
 function formatTime(seconds: number) {
-  // if (!seconds) {
-  //   return "25:00";
-  // }
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 export function TimerDisplay() {
-  const { tick, activeTaskId, remainingTime, sessionStatus } =
-    usePomodoroStore();
-
-  const [hydrated, setHydrated] = React.useState(false);
-
-  React.useEffect(() => {
-    setHydrated(true);
-  }, [activeTaskId]);
-
-  React.useEffect(() => {
-    if (!hydrated) return;
-    if (sessionStatus === "running") {
-      const interval = setInterval(tick, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [sessionStatus, hydrated]);
-
-  if (!hydrated) {
-    return (
-      <div className="flex items-center justify-center rounded-[40%] bg-background md:h-64 md:w-80 md:border-4 md:border-border">
-        <div className="flex gap-4">
-          <Skeleton className="h-30 w-30" />
-          <Skeleton className="h-30 w-30" />
-        </div>
-      </div>
-    );
-  }
+  const { activeTaskId, tasks } = usePomodoroStore();
 
   return (
-    <div className="flex items-center justify-center rounded-[40%] bg-background md:h-64 md:w-80 md:border-4 md:border-border">
+    <div className="flex items-center justify-center rounded-[40%] bg-background md:h-56 md:w-80 md:border-4 md:border-border">
       <div
-        className={`text-8xl font-bold tabular-nums ${sessionStatus === "running" ? "timer-pulse" : ""}`}
+        className={`text-8xl font-bold tabular-nums ${tasks[activeTaskId!]?.sessionStatus === "running" ? "timer-pulse" : ""}`}
       >
-        {formatTime(remainingTime)}
+        {formatTime(tasks[activeTaskId!]?.remainingTime || 0)}
       </div>
     </div>
   );
 }
 
 export function TimerController() {
+  const fetcher = useFetcher();
   const [hydrate, setHydrate] = React.useState(false);
-  const { activeTaskId, sessionStatus, pauseTask, startTask, resetTask } =
+  const { activeTaskId, tasks, pauseTask, startTask, resetTask } =
     usePomodoroStore();
 
   React.useEffect(() => {
@@ -70,19 +43,27 @@ export function TimerController() {
     );
   }
 
-  const isRunning = sessionStatus === "running";
-  function playStopHandle(e: React.SyntheticEvent) {
-    e.preventDefault();
+  const isRunning = tasks[activeTaskId!]?.sessionStatus === "running";
+  function playStopHandle(taskId: string) {
+    if (!taskId) return alert("Opss task id not provided");
+
+    if (typeof window === "undefined") return;
     if (isRunning) {
       new Audio("/notify-2.wav").play();
       // set stop-session usign fetch.submit
       // ...code here
-      pauseTask(activeTaskId!);
+      if (tasks[activeTaskId!].sessionType === "focus") {
+        fetcher.submit({ intent: "pause-session", taskId }, { method: "post" });
+      }
+      pauseTask();
     } else {
       // new Audio("vine-boom.mp3").play();
       new Audio("/notify.wav").play();
       // set start-session usign fetch.submit
       // ...code here
+      if (tasks[activeTaskId!].sessionType === "focus") {
+        fetcher.submit({ intent: "start-session", taskId }, { method: "post" });
+      }
       startTask();
     }
   }
@@ -90,10 +71,9 @@ export function TimerController() {
     <div className="flex items-center gap-3">
       <Button
         size="lg"
-        onClick={playStopHandle}
+        onClick={() => playStopHandle(activeTaskId!)}
         disabled={activeTaskId ? false : true}
-        className="min-w-32"
-        variant="outline"
+        variant="ghost"
       >
         {isRunning ? (
           <>
@@ -111,7 +91,7 @@ export function TimerController() {
       <Button
         size="lg"
         variant="ghost"
-        onClick={() => resetTask(activeTaskId!)}
+        onClick={() => resetTask()}
         disabled={isRunning}
       >
         <RotateCcw className="mr-2 h-4 w-4" />
@@ -122,38 +102,47 @@ export function TimerController() {
 }
 
 export const SessionTypeToggle = () => {
-  const { setSessionType, sessionType, sessionStatus, activeTaskId } =
-    usePomodoroStore();
-  const isDisabled = sessionStatus === "running";
+  const { setSessionType, tasks, activeTaskId } = usePomodoroStore();
+  const isDisabled = tasks[activeTaskId!]?.sessionStatus === "running";
 
   return (
     <div className="flex items-center gap-2">
       <Button
-        variant={sessionType === "focus" ? "outline" : "ghost"}
+        variant={
+          tasks[activeTaskId!]?.sessionType === "focus" ? "outline" : "ghost"
+        }
         size="sm"
         onClick={() => setSessionType("focus")}
         disabled={isDisabled}
-        className={`gap-2 ${sessionType === "focus" ? "text-primary" : ""}`}
+        className={`gap-2 ${tasks[activeTaskId!]?.sessionType === "focus" ? "text-primary" : ""}`}
       >
         <Settings className="h-4 w-4" />
         Focus
       </Button>
       <Button
-        variant={sessionType === "short_break" ? "outline" : "ghost"}
+        variant={
+          tasks[activeTaskId!]?.sessionType === "short_break"
+            ? "outline"
+            : "ghost"
+        }
         size="sm"
         onClick={() => setSessionType("short_break")}
         disabled={isDisabled}
-        className={`gap-2 ${sessionType === "short_break" ? "text-primary" : ""}`}
+        className={`gap-2 ${tasks[activeTaskId!]?.sessionType === "short_break" ? "text-primary" : ""}`}
       >
         <Coffee className="h-4 w-4" />
         Break
       </Button>
       <Button
-        variant={sessionType === "long_break" ? "outline" : "ghost"}
+        variant={
+          tasks[activeTaskId!]?.sessionType === "long_break"
+            ? "outline"
+            : "ghost"
+        }
         size="sm"
         onClick={() => setSessionType("long_break")}
         disabled={isDisabled}
-        className={`gap-2 ${sessionType === "long_break" ? "text-primary" : ""}`}
+        className={`gap-2 ${tasks[activeTaskId!]?.sessionType === "long_break" ? "text-primary" : ""}`}
       >
         <Timer className="h-4 w-4" />
         Long Break
@@ -163,7 +152,7 @@ export const SessionTypeToggle = () => {
 };
 
 export const ProgressIndicator = () => {
-  const { cyclesCount } = usePomodoroStore();
+  const { tasks, activeTaskId } = usePomodoroStore();
 
   return (
     <div className="space-y-4 text-center">
@@ -172,11 +161,13 @@ export const ProgressIndicator = () => {
       </p>
 
       <div className="flex items-center justify-center gap-4">
-        {[0, 1, 2, 3].map((cycle) => (
+        {[0, 1, 2, 3]?.map((cycle) => (
           <div
             key={cycle}
             className={`flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors ${
-              cycle < cyclesCount
+              cycle <
+              tasks[activeTaskId!].cycleCount -
+                Math.floor(tasks[activeTaskId!]?.cycleCount / 4) * 4
                 ? "border-primary bg-primary"
                 : "border-border bg-background"
             }`}
@@ -185,7 +176,7 @@ export const ProgressIndicator = () => {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {cyclesCount ?? "0"}/4 cycles completed
+        {tasks[activeTaskId!]?.cycleCount ?? "0"}/4 cycles completed
       </p>
     </div>
   );
