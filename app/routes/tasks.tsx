@@ -7,9 +7,9 @@ import {
 } from "~/components/timer";
 import type { Route } from "./+types/tasks";
 import { db } from "~/db/drizzle";
-import { taskCycles, tasks, taskSessions } from "~/db/schema";
-import { and, desc, eq } from "drizzle-orm";
-import { data, Outlet, redirect } from "react-router";
+import { taskCycles, tasks } from "~/db/schema";
+import { eq } from "drizzle-orm";
+import { data, Outlet, redirect, useFetcher } from "react-router";
 import { AddTaskForm } from "~/components/add-task";
 import { usePomodoroStore } from "~/store/usePomodoroStore";
 import { authMiddleware } from "~/middleware/auth";
@@ -26,6 +26,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { ChevronsUpDown, Info } from "lucide-react";
 import React from "react";
+import { taskSessionsServices } from "~/services/task-sessions-service.server";
 
 export const middleware: Route.MiddlewareFunction[] = [authMiddleware];
 
@@ -121,134 +122,15 @@ export async function action({ request, context }: Route.ActionArgs) {
         status: 400,
       });
     }
-    const existSession = await safeDb(
-      async () => {
-        const result = await db
-          .select()
-          .from(taskSessions)
-          .where(eq(taskSessions.taskId, safeTaskId))
-          .orderBy(desc(taskSessions.startedAt))
-          .limit(1);
-        return result;
-      },
-      { action: "find-task-session", entity: "task_sessions" },
-    );
-    if (!existSession.success)
-      return data(
-        errorResponse({
-          message: existSession.error.message,
-        }),
-        { status: existSession.error.status },
-      );
-    if (existSession.data?.length === 0) {
-      // if session is not not exist
-      const createSession = await safeDb(
-        async () => {
-          await db.transaction(async (tx) => {
-            const [activeCycle] = await tx
-              .select({ id: taskCycles.id })
-              .from(taskCycles)
-              .where(
-                and(
-                  eq(taskCycles.taskId, safeTaskId),
-                  eq(taskCycles.userId, authUser.userId),
-                  eq(taskCycles.status, "active"),
-                ),
-              );
-            await tx
-              .insert(taskSessions)
-              .values({
-                userId: authUser.userId,
-                taskId: safeTaskId,
-                cycleId: activeCycle.id,
-                startedAt: new Date(),
-                type: "work",
-                duration: 25 * 60,
-              })
-              .returning();
-          });
-          return;
-        },
-        { action: "start-session", entity: "task-cycles-sessions" },
-      );
-      if (!createSession.success) {
-        return data(
-          errorResponse({
-            message: createSession.error.message,
-          }),
-          { status: createSession.error.status },
-        );
-      }
-      return data(successResponse({ message: "Task is started" }));
-    }
-    const updateExistSession = await safeDb(
-      async () => {
-        await db.update(taskSessions).set({ status: "running" });
-      },
-      { action: "update-exist-session", entity: "task-session" },
-    );
-    if (!updateExistSession.success) {
-      return data(
-        errorResponse({
-          message: updateExistSession.error.message,
-        }),
-        { status: updateExistSession.error.status },
-      );
-    }
-    return data(successResponse({ message: "Task is started" }));
+    return taskSessionsServices.start(safeTaskId, authUser.userId);
   }
   if (intent === "pause-session") {
     const taskId = formData.get("taskId");
     const schema = z.uuidv7();
     const safeTaskId = schema.parse(taskId);
+
     if (!safeTaskId) throw new Error("task session id not found");
-    const existSession = await safeDb(
-      async () => {
-        return await db
-          .select()
-          .from(taskSessions)
-          .where(eq(taskSessions.taskId, safeTaskId))
-          .orderBy(desc(taskSessions.startedAt))
-          .limit(1);
-      },
-      { action: "exist-session-pause", entity: "task-session" },
-    );
-    if (!existSession.success)
-      return data(
-        errorResponse({
-          message: existSession.error.message,
-        }),
-        { status: existSession.error.status },
-      );
-    if (existSession.data?.length === 0) {
-      return data(
-        errorResponse({
-          message: "task session not exist",
-        }),
-        { status: 404 },
-      );
-    }
-    const result = await safeDb(
-      async () => {
-        await db
-          .update(taskSessions)
-          .set({ status: "paused", endedAt: new Date() })
-          .where(eq(taskSessions.id, existSession.data?.[0].id!));
-      },
-      {
-        action: "pause-session",
-        entity: "task-sessions",
-      },
-    );
-    if (!result.success) {
-      return data(
-        errorResponse({
-          message: result.error.message,
-        }),
-        { status: result.error.status },
-      );
-    }
-    return data(successResponse({ message: "Task is pause" }));
+    return taskSessionsServices.pause(safeTaskId);
   }
 
   if (intent === "delete-task") {
@@ -281,10 +163,36 @@ export async function action({ request, context }: Route.ActionArgs) {
       status: 200,
     });
   }
+  if (intent === "completed-session") {
+    const taskId = formData.get("taskId");
+    const schema = z.uuidv7();
+    const safeTaskId = schema.parse(taskId);
+    if (!safeTaskId) {
+      return data(errorResponse({ message: "task id is require" }), {
+        status: 400,
+      });
+    }
+    return await taskSessionsServices.completedSession(safeTaskId);
+  }
   return {};
 }
 
 export default function Tasks({ loaderData }: Route.ComponentProps) {
+  const activeTaskId = usePomodoroStore((s) => s.activeTaskId);
+  const tasks = usePomodoroStore((s) => s.tasks);
+  const fetcher = useFetcher();
+  React.useEffect(() => {
+    if (!activeTaskId) return;
+    if (
+      tasks[activeTaskId].remainingTime <= 1 &&
+      tasks[activeTaskId].sessionType === "focus"
+    ) {
+      fetcher.submit(
+        { intent: "completed-session", taskId: activeTaskId },
+        { method: "post" },
+      );
+    }
+  }, [activeTaskId, tasks]);
   return (
     <div className="px-4 py-8">
       <div className="mx-auto max-w-6xl">
