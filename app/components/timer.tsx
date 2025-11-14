@@ -16,7 +16,7 @@ export function TimerDisplay() {
   return (
     <div className="flex items-center justify-center rounded-[40%] bg-background md:h-56 md:w-80 md:border-4 md:border-border">
       <div
-        className={`text-8xl font-bold tabular-nums ${tasks[activeTaskId!]?.sessionStatus === "running" ? "timer-pulse" : ""}`}
+        className={`text-9xl font-bold tabular-nums md:text-[200px] ${tasks[activeTaskId!]?.sessionStatus === "running" ? "timer-pulse" : ""}`}
       >
         {formatTime(tasks[activeTaskId!]?.remainingTime || 0)}
       </div>
@@ -166,7 +166,7 @@ export const ProgressIndicator = () => {
             key={cycle}
             className={`flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors ${
               cycle <
-              tasks[activeTaskId!].cycleCount -
+              tasks[activeTaskId!]?.cycleCount -
                 Math.floor(tasks[activeTaskId!]?.cycleCount / 4) * 4
                 ? "border-primary bg-primary"
                 : "border-border bg-background"
