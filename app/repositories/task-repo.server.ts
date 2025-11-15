@@ -1,15 +1,11 @@
-import { and, desc, eq, isNotNull, not, sql } from "drizzle-orm";
+import { and, desc, eq, not, sql } from "drizzle-orm";
 import { db } from "~/db/drizzle";
 import { taskCycles, tasks, taskSessions } from "~/db/schema";
 
 export const tasksRepositories = {
   getTaskWithCycleSession: async (safeTaskId: string) => {
     const latestCycle = db
-      .select({
-        id: taskCycles.id,
-        status: taskCycles.status,
-        completedSessions: taskCycles.completedSessions,
-      })
+      .select()
       .from(taskCycles)
       .where(
         and(eq(taskCycles.taskId, safeTaskId), eq(taskCycles.status, "active")),
@@ -46,7 +42,6 @@ export const tasksRepositories = {
         session: {
           id: latestSession.id,
           status: latestSession.status,
-          completed: latestSession.completed,
           startedAt: latestSession.startedAt,
           duration: latestSession.duration,
         },
